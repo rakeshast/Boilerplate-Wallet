@@ -126,6 +126,9 @@ class Wallet_System_For_Wc {
 		//The class responsible for defining all common functions related to plugin.
 		require_once WALLET_SYSTEM_FOR_WC_DIR_PATH . 'includes/class-wallet-system-for-wc-helper.php';
 
+		//The class responsible for defining all common functions related to plugin.
+		//require_once WALLET_SYSTEM_FOR_WC_DIR_PATH . 'public/class-wallet-credit-payment-gateway.php';
+
 		$this->loader = new Wallet_System_For_Wc_Loader();
 
 	}
@@ -162,12 +165,12 @@ class Wallet_System_For_Wc {
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 
 		// Hook to display fields on user profile edit page
-		$this->loader->add_action( 'show_user_profile', $plugin_admin, 'wallet_system_for_wc_user_profile_fields' );
-		$this->loader->add_action( 'edit_user_profile', $plugin_admin, 'wallet_system_for_wc_user_profile_fields' );
+		$this->loader->add_action( 'show_user_profile', $plugin_admin, 'wallet_system_for_wc_user_profile_fields', 10, 1 );
+		$this->loader->add_action( 'edit_user_profile', $plugin_admin, 'wallet_system_for_wc_user_profile_fields', 10, 1  );
 
 		// Hook to display fields on user profile edit page and validation
-		$this->loader->add_action( 'personal_options_update', $plugin_admin, 'wallet_system_for_wc_save_user_field' );
-		$this->loader->add_action( 'edit_user_profile_update', $plugin_admin, 'wallet_system_for_wc_save_user_field' );
+		$this->loader->add_action( 'personal_options_update', $plugin_admin, 'wallet_system_for_wc_save_user_field', 10, 1 );
+		$this->loader->add_action( 'edit_user_profile_update', $plugin_admin, 'wallet_system_for_wc_save_user_field', 10, 1 );
 
 		//Display custom column for user 
 		$this->loader->add_filter( 'manage_users_columns', $plugin_admin, 'wallet_system_for_wc_user_column' );
@@ -208,7 +211,16 @@ class Wallet_System_For_Wc {
 		$this->loader->add_action( 'wp_ajax_nopriv_wswc_wallet_recharge', $plugin_public, 'wswc_wallet_recharge' );
 
 
+		$this->loader->add_filter( 'wswc_show_converted_price', $plugin_public, 'wswc_show_converted_price', 10, 1 );
+		$this->loader->add_filter( 'wswc_convert_to_base_price', $plugin_public, 'wswc_convert_to_base_price', 10, 1 );
 
+		$this->loader->add_filter( 'wps_wsfw_get_current_currency', $plugin_public, 'wps_wsfw_get_current_currency', 10, 1 );
+
+		//$this->loader->add_action('woocommerce_checkout_process', $plugin_public, 'custom_checkout_validation');
+		
+
+
+		
 	}
 
 	/**

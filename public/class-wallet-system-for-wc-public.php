@@ -148,13 +148,21 @@ class Wallet_System_For_Wc_Public {
 		if (is_user_logged_in()) {
 
 			$user = wp_get_current_user();
-
+			$user_id = $user->ID;
+			$user_username = $user->user_login;
+			$user_email = $user->user_email;
+	
 			$upload_dir = wp_upload_dir();
 			//$upload_basedir = $upload_dir['basedir']."/qrcode/";
-			$upload_baseurl = $upload_dir['baseurl']."/qrcode/";
-			
+			$upload_baseurl = $upload_dir['baseurl']."/qrcode/";			
 			$user_qr_file_url = $upload_baseurl . get_user_meta($user->ID, 'user_qr_file_name', true);			
-			$user_qr_wallet = get_user_meta($user->ID, 'user_qr_wallet', true);
+
+
+			global  $woocommerce;
+			$currency   = get_woocommerce_currency_symbol();
+			$user_qr_wallet = get_user_meta( $user_id, 'user_qr_wallet', true );	
+
+
 		?>
 	
 			<div class="custom-my-account">
@@ -179,7 +187,8 @@ class Wallet_System_For_Wc_Public {
 							</tr>
 							<tr>
 								<td>Wallet Balance</td>
-								<td><p> <?php echo $user_qr_wallet; ?> </p></td>
+							
+								<td><p> <?php echo wp_kses_post( wc_price( $user_qr_wallet ) ); ?> </p></td>
 							</tr>
 						</tbody>
 					</table>
@@ -225,9 +234,12 @@ class Wallet_System_For_Wc_Public {
             $current_user_info = get_userdata($current_user_id);
             $current_user_login = $current_user_info->user_login;
             $current_user_email = $current_user_info->user_email;
-            
-            $username = sanitize_text_field($_POST['username']);
+
+            $current_user_wallet_amount = get_user_meta($current_user_id, 'user_qr_wallet', true);
+
+            $username = $_POST['username'];
             $amt_to_transfer = $_POST['wallet_amt'];
+           
            
             if ($username === $current_user_login) {
                 $errors['username'] = "You can not transfer wallet balance to your account. " .$username;
@@ -269,7 +281,8 @@ class Wallet_System_For_Wc_Public {
                 $current_user_wallet_amount = get_user_meta($current_user_id, 'user_qr_wallet', true);
                 $deposit_user_wallet_amount = get_user_meta($user_id_to_tranfer_wallet_amount, 'user_qr_wallet', true);
                
-                $current_user_wallet_balance = $current_user_wallet_amount - $amt_to_transfer;$beneficial_user_wallet_balance = $deposit_user_wallet_amount + $amt_to_transfer;
+                $current_user_wallet_balance = $current_user_wallet_amount - $amt_to_transfer; 
+				$beneficial_user_wallet_balance = $deposit_user_wallet_amount + $amt_to_transfer;
     
                 update_user_meta($current_user_id, 'user_qr_wallet', $current_user_wallet_balance);
                 update_user_meta($user_id_to_tranfer_wallet_amount, 'user_qr_wallet', $beneficial_user_wallet_balance);               
@@ -321,7 +334,7 @@ class Wallet_System_For_Wc_Public {
 			// User is logged in, create a new WooCommerce order and add the wallet recharge product.
 			$order = wc_create_order();			
 			$product_id = get_option( 'wswc_wallet_recharge_product_id'); // Replace with the actual product ID for the wallet recharge product.
-			$quantity = 5; // Adjust the quantity as needed.
+			$quantity = 1; // Adjust the quantity as needed.
 			$order->add_product(wc_get_product($product_id), $quantity);
 	
 			// Calculate totals and save the order.
@@ -343,5 +356,98 @@ class Wallet_System_For_Wc_Public {
 			wp_send_json_error('User is not logged in.');
 		}
 	}
+
+
+	/**
+	 * Returns converted price of wallet balance.
+	 *
+	 * @param float $wallet_bal wallet balance.
+	 * @return float
+	 */
+	public function wswc_show_converted_price( $wallet_bal ) {
+
+		if ( class_exists( 'WOOCS' ) ) {
+			global $WOOCS; // phpcs:ignore issues due to plugin compatibility.
+
+			$amount = $WOOCS->woocs_exchange_value( $wallet_bal ); // phpcs:ignore issues due to plugin compatibility.
+
+			return $amount;
+		} else if ( function_exists( 'wmc_get_price' ) ) {
+
+			$wallet_bal = wmc_get_price( $wallet_bal );
+
+			return $wallet_bal;
+		} else {
+			return $wallet_bal;
+		}
+
+	}
+
+
+	/**
+	 * Convert the amount into base currency amount.
+	 *
+	 * @param string $price price.
+	 * @return string
+	 */
+	public function wswc_convert_to_base_price( $price ) {
+
+		$wps_sfw_active_plugins = get_option( 'active_plugins' );
+		if ( in_array( 'woocommerce-currency-switcher/index.php', $wps_sfw_active_plugins ) ) {
+
+			if ( class_exists( 'WOOCS' ) ) {
+				global $WOOCS; // phpcs:ignore issues due to plugin compatibility.
+				$amount = '';
+				if ( $WOOCS->is_multiple_allowed ) { // phpcs:ignore issues due to plugin compatibility.
+					 $currrent = $WOOCS->current_currency; // phpcs:ignore issues due to plugin compatibility.
+					if ( $currrent != $WOOCS->default_currency ) { // phpcs:ignore issues due to plugin compatibility.
+						$currencies = $WOOCS->get_currencies(); // phpcs:ignore issues due to plugin compatibility.
+						$rate = $currencies[ $currrent ]['rate'];
+						$amount = $price / ( $rate );
+						return $amount;
+					} else {
+						return $price;
+					}
+				}
+			}
+		}
+
+		if ( function_exists( 'wmc_revert_price' ) ) {
+
+			$price = wmc_revert_price( $price );
+			return $price;
+		}
+
+		return $price;
+	}
+
+
+	public function wps_wsfw_get_current_currency($current){
+		$wps_sfw_active_plugins = get_option( 'active_plugins' );
+		if ( in_array( 'woocommerce-currency-switcher/index.php', $wps_sfw_active_plugins ) ) {
+
+			if ( class_exists( 'WOOCS' ) ) {
+				global $WOOCS; // phpcs:ignore issues due to plugin compatibility.
+			
+				if ( $WOOCS->is_multiple_allowed ) { // phpcs:ignore issues due to plugin compatibility.
+					 return $current = $WOOCS->current_currency; // phpcs:ignore issues due to plugin compatibility.
+					
+				}
+			}
+		}else{
+			return $current;
+		}
+	}
+
+	// Hook into WooCommerce checkout process
+	
+
+
+
+
+
+
 	
 }
+
+
