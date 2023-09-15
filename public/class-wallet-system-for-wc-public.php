@@ -139,89 +139,28 @@ class Wallet_System_For_Wc_Public {
 
 	// register permalink endpoint
 	public function wallet_system_for_wc_add_endpoint() {
-		add_rewrite_endpoint( 'wallet', EP_PAGES );
-		flush_rewrite_rules();
+
+		global $wp_rewrite;
+		add_rewrite_endpoint( 'wallet', EP_ROOT | EP_PAGES );
+		add_rewrite_endpoint( 'wallet-topup', EP_PERMALINK | EP_PAGES );
+		add_rewrite_endpoint( 'wallet-transfer', EP_PERMALINK | EP_PAGES );
+		add_rewrite_endpoint( 'wallet-withdrawal', EP_PERMALINK | EP_PAGES );
+		add_rewrite_endpoint( 'wallet-transactions', EP_PERMALINK | EP_PAGES );
+		do_action( 'wps_wsfw_add_wallet_register_endpoint' );
+		$wp_rewrite->flush_rules();
+
 	}
 
 	// content for the new page in My Account, woocommerce_account_{ENDPOINT NAME}_endpoint
 	public function wallet_system_for_wc_my_account_endpoint_content() { 
-		if (is_user_logged_in()) {
 
-			$user = wp_get_current_user();
-			$user_id = $user->ID;
-			$user_username = $user->user_login;
-			$user_email = $user->user_email;
-	
-			$upload_dir = wp_upload_dir();
-			//$upload_basedir = $upload_dir['basedir']."/qrcode/";
-			$upload_baseurl = $upload_dir['baseurl']."/qrcode/";			
-			$user_qr_file_url = $upload_baseurl . get_user_meta($user->ID, 'user_qr_file_name', true);			
-
-
-			global  $woocommerce;
-			$currency   = get_woocommerce_currency_symbol();
-			$user_qr_wallet = get_user_meta( $user_id, 'user_qr_wallet', true );	
-
-
-		?>
-	
-			<div class="custom-my-account">
-				<p>Welcome to your wallet <strong><?php echo esc_html($user->display_name); ?>!</strong></p>
-				
-				<div class="wallet">
-					<table class="table table-border">
-						<thead>
-							<tr>
-								<th scope="col">Label</th>
-								<th scope="col">Value</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td>Qr Code</td>
-								<td>
-									<p><img src="<?php echo $user_qr_file_url; ?>" class="img" style="width:100%; max-width:120px;"/></p>
-									<button type="button" class="button">Regenerate Wallet QR Code</button>
-									<button type="button" class="button" id="your-custom-button-id">Recharge Wallet</button>
-								</td>
-							</tr>
-							<tr>
-								<td>Wallet Balance</td>
-							
-								<td><p> <?php echo wp_kses_post( wc_price( $user_qr_wallet ) ); ?> </p></td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-	
-				<form id="custom-account-form" method="post">
-					<h3>Transfer Wallet balance to Any User using user name</h3>
-					
-					<?php 
-						$this->display_form_errors();
-					?>
-	
-					<?php 
-						if (isset($_GET['success']) && $_GET['success'] === '1') {
-							echo '<div class="woocommerce-message success">Your wallet balance has been successfully transfered.</div>';
-						}
-					?>
-					<div class="form-group mb-3">
-						<label for="username">Username</label>                
-						<input type="text" class="form-control" id="username" name="username" placeholder="Enter Username/Email">
-					</div>
-					<div class="form-group mb-3">
-						<label for="wallet_amt">Wallet Amount</label>                
-						<input type="number" class="form-control" id="wallet_amt" name="wallet_amt" placeholder="Wallet Amount">
-					</div>
-					<button type="submit" class="btn btn-primary">Submit</button>
-				</form>
-				
-			</div>
-		<?php
-		} else {
-			echo 'Please log in to access your account.';
-		}
+		// Define the path to Plugin A's template file.
+		ob_start();
+            include_once( WALLET_SYSTEM_FOR_WC_DIR_PATH . 'public/partials/wallet-system-for-wc-public-wallet.php' );               
+            $template = ob_get_contents();
+        ob_clean();            
+        echo $template;
+		
 	
 	}
 
